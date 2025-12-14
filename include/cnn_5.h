@@ -6,7 +6,7 @@
 **************************************************************************************************/
 
 /*
- * This header file was automatically @generated for the dotprod_demo_fp network from a template.
+ * This header file was automatically @generated for the dotprod_demo_fp1024 network from a template.
  * Please do not edit; instead, edit the template and regenerate.
  */
 
@@ -23,24 +23,22 @@ typedef int16_t q15_t;
 
 /*
   SUMMARY OF OPS
-  Hardware: 2,048 ops (2,048 macc; 0 comp; 0 add; 0 mul; 0 bitwise)
-    Layer 73: 2,048 ops (2,048 macc; 0 comp; 0 add; 0 mul; 0 bitwise)
+  Hardware: 65,536 ops (65,536 macc; 0 comp; 0 add; 0 mul; 0 bitwise)
+    Layer 73: 65,536 ops (65,536 macc; 0 comp; 0 add; 0 mul; 0 bitwise)
 
   RESOURCE USAGE
-  Weight memory: 2,048 bytes out of 2,396,160 bytes total (0.1%)
+  Weight memory: 65,536 bytes out of 2,396,160 bytes total (2.7%)
   Bias memory:   0 bytes out of 8,192 bytes total (0.0%)
 */
 
 /* Number of outputs for this network */
-#define CNN_5_NUM_OUTPUTS 1024 //16
-
-//need to check, the real shift number is what
+#define CNN_5_NUM_OUTPUTS 1024
 #define CNN_5_OUTPUT_SHIFT 2
-//need to check, set thre real threshold for fingerprint
-#define Threshold 64
 
-/* Use this timer to time the inference */
-#define CNN_5_INFERENCE_TIMER MXC_TMR0
+#define Threshold_5 64
+
+// /* Use this timer to time the inference */
+// #define CNN_INFERENCE_TIMER MXC_TMR0
 
 // /* Port pin actions used to signal that processing is active */
 
@@ -65,7 +63,7 @@ extern volatile uint32_t cnn_time;
 int cnn_5_enable(uint32_t clock_source, uint32_t clock_divider);
 
 /* Disable clocks and power to accelerator */
-int cnn_5_disable(void);
+// int cnn_disable(void);
 
 /* Perform minimum accelerator initialization so it can be configured */
 int cnn_5_init(void);
@@ -83,21 +81,21 @@ int cnn_5_verify_weights(void);
 int cnn_5_load_bias(void);
 
 /* Start accelerator processing */
-int cnn_5_start(void);
+int cnn_start(void);
 
 /* Force stop accelerator */
-int cnn_5_stop(void);
+// int cnn_stop(void);
 
 /* Continue accelerator after stop */
-int cnn_5_continue(void);
+// int cnn_continue(void);
 
 /* Unload results from accelerator */
 int cnn_5_unload(uint32_t *out_buf);
 
-// /* Turn on the boost circuit */
+/* Turn on the boost circuit */
 // int cnn_boost_enable(mxc_gpio_regs_t *port, uint32_t pin);
 
-// /* Turn off the boost circuit */
+/* Turn off the boost circuit */
 // int cnn_boost_disable(mxc_gpio_regs_t *port, uint32_t pin);
 
 #endif // __CNN_H__
