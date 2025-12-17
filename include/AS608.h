@@ -17,7 +17,7 @@
 // uint8_t TxData[]
 extern uint8_t TxData[16];
 extern uint8_t RxData[144*267+12];
-extern uint8_t Finger[144][256];
+extern uint8_t Finger[112*112];
 
 extern mxc_uart_req_t read_req;
 extern mxc_uart_req_t write_req;
@@ -30,6 +30,7 @@ extern void uart_read(uint8_t *buf, uint32_t len);
 extern void wait_receiving(void);
 extern void write_to_as608(uint8_t cmd);
 extern void read_from_as608(uint32_t len);
+extern void finger_detection(void);
 
 
 #endif

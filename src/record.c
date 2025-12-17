@@ -54,8 +54,11 @@
 #include "baseaddr.h"
 #include "record.h"
 #include "embeddings.h"
+#include "AS608.h"
 
 #define S_MODULE_NAME "record"
+
+// jason add fingerprint
 
 /***** Definitions *****/
 #define DB_ADDRESS                              \
@@ -118,9 +121,11 @@ extern volatile char
 extern volatile int32_t output_buffer[16];
 extern unsigned int touch_x, touch_y;
 extern volatile uint8_t face_detected;
+extern volatile uint8_t finger_detected;
 extern volatile uint8_t capture_key;
 extern volatile uint8_t record_mode;
 volatile uint8_t face_ok = 0;
+volatile unit8_t finger_ok = 0;
 extern area_t area;
 extern area_t area_1;
 extern area_t area_2;
@@ -510,6 +515,30 @@ bool check_db()
     return (magic_read == MAGIC);
 }
 //============================================================================
+
+void show_finger(const uint8_t *img112)
+{
+    uint16_t lineBuf[DST_W];
+
+    MXC_TFT_ClearScreen();
+    MXC_TFT_SetRotation(270); 
+    __disable_irq();
+    MXC_TFT_Stream(SHOW_START_X, SHOW_START_Y, DST_H, DST_W);
+
+    for (int y = 0; y < DST_H; ++y) {
+        for (int x = 0; x < DST_W; ++x) {
+            uint8_t g = img112[y * DST_W + x];
+            uint16_t rgb565 = (uint16_t)(((g >> 3) << 11) | ((g >> 2) << 5) | (g >> 3));
+            lineBuf[x] = rgb565;
+        }
+        TFT_SPI_Transmit((uint8_t*)lineBuf, DST_W * sizeof(uint16_t));
+    }
+
+    __enable_irq();
+    MXC_TFT_SetRotation(ROTATE_180);
+}
+
+
 void show_face()
 {
     uint32_t imgLen;
@@ -609,6 +638,7 @@ int add_person(Person *p)
     int err = 0;
     int init_reshow = 0;
     int init_faceid = 0;
+    int init_fingerid = 0;
     int init_come_closer = 0;
     face_detected = 0;
     text_t text_buffer;
@@ -632,11 +662,102 @@ int add_person(Person *p)
     MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
     // Re-enable the ICC
     MXC_ICC_Enable(MXC_ICC0);
-    while (!face_ok) // Get user's feedback for the captured image
+//     while (!face_ok) // Get user's feedback for the captured image
+//     {
+//         init_faceid = 0;
+//         while (!face_detected || !capture_key) {
+//             if (!init_faceid) {
+//                 MXC_TFT_ClearScreen();
+//                 MXC_TS_RemoveAllButton();
+//                 MXC_TS_AddButton(260, 160, 320, 240, 2);
+//                 MXC_TFT_FillRect(&area_2, 0xFD20);
+//                 text_buffer.data = "Capture";
+//                 text_buffer.len = 7;
+//                 MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
+//                 init_faceid = 1;
+//             }
+            
+//             face_detection();
+//             if (face_detected) {
+//                 printf("Box width: %d\n", box[2] - box[0]);
+//                 printf("Box height: %d\n", box[3] - box[1]);
+//                 if ((box[2] - box[0]) < 70 || (box[3] - box[1]) < 110) {
+//                     face_detected = 0;
+
+//                     if (!init_come_closer) {
+//                         text_buffer.data = "Come Closer";
+//                         text_buffer.len = 11;
+//                         MXC_TFT_PrintFont(60, 300, font, &text_buffer, NULL);
+//                         init_come_closer = 1;
+//                     }
+
+//                     continue;
+//                 } else {
+//                     MXC_TFT_ClearArea(&area, 4);
+//                     init_come_closer = 0;
+//                 }
+//             }
+
+// #ifdef TS_ENABLE
+//             key = MXC_TS_GetKey();
+//             if (key == 2) {
+//                 capture_key = 1;
+//                 MXC_TFT_FillRect(&area_2, 0x9D20);
+//                 text_buffer.data = "Capture";
+//                 text_buffer.len = 7;
+//                 MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
+//             }
+
+// #endif
+
+//             //face_detected = 0;
+//         }
+//         capture_key = 0;
+//         face_detected = 0;
+
+//         show_face();
+
+//         if (!init_reshow) {
+//             //Clear buttons
+//             MXC_TFT_FillRect(&area_1, 0xFD20);
+//             MXC_TFT_FillRect(&area_2, 0xFD20);
+//             MXC_TS_AddButton(260, 0, 320, 80, 1);
+//             MXC_TS_AddButton(260, 160, 320, 240, 2);
+
+//             text_buffer.data = "OK";
+//             text_buffer.len = 2;
+//             MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
+
+//             text_buffer.data = "Retry";
+//             text_buffer.len = 5;
+//             MXC_TFT_PrintFont(162, 270, font, &text_buffer, NULL);
+//             init_reshow = 1;
+//         }
+
+//         //Show captured face
+//         // Ask user if he/she is ok with the image
+//         // If not, repeat the process
+//         key = 0;
+//         while (key == 0) //Wait for user's feedback, 0 is the default value
+//         {
+//             key = MXC_TS_GetKey();
+//             if (key == 2) {
+//                 face_ok = 1;
+//                 init_reshow = 0;
+//                 PR_DEBUG("Face is ok\n");
+//             } else if (key == 1) {
+//                 face_ok = 0;
+//                 init_reshow = 0;
+//                 PR_DEBUG("Face is not ok\n");
+//             }
+//         }
+//     }
+
+    while (!finger_ok) // Get user's feedback for the captured image
     {
-        init_faceid = 0;
-        while (!face_detected || !capture_key) {
-            if (!init_faceid) {
+        init_fingerid = 0;
+        while (!finger_detected || !capture_key) {
+            if (!init_fingerid) {
                 MXC_TFT_ClearScreen();
                 MXC_TS_RemoveAllButton();
                 MXC_TS_AddButton(260, 160, 320, 240, 2);
@@ -644,28 +765,16 @@ int add_person(Person *p)
                 text_buffer.data = "Capture";
                 text_buffer.len = 7;
                 MXC_TFT_PrintFont(0, 270, font, &text_buffer, NULL);
-                init_faceid = 1;
+                init_fingerid = 1;
             }
-
-            face_detection();
-            if (face_detected) {
-                printf("Box width: %d\n", box[2] - box[0]);
-                printf("Box height: %d\n", box[3] - box[1]);
-                if ((box[2] - box[0]) < 70 || (box[3] - box[1]) < 110) {
-                    face_detected = 0;
-
-                    if (!init_come_closer) {
-                        text_buffer.data = "Come Closer";
-                        text_buffer.len = 11;
-                        MXC_TFT_PrintFont(60, 300, font, &text_buffer, NULL);
-                        init_come_closer = 1;
-                    }
-
-                    continue;
-                } else {
-                    MXC_TFT_ClearArea(&area, 4);
-                    init_come_closer = 0;
-                }
+            
+            //face_detection();
+            finger_detection();
+            if (finger_detected) {
+                finger_recv_data();
+                printf("AS608 detect a finger.\n");
+            }else{
+                printf("Didn't detect any fingerpints!\n");
             }
 
 #ifdef TS_ENABLE
@@ -683,9 +792,11 @@ int add_person(Person *p)
             //face_detected = 0;
         }
         capture_key = 0;
-        face_detected = 0;
+        // face_detected = 0;
+        finger_detected = 0;
 
-        show_face();
+        //show_face();
+        show_finger(Finger);
 
         if (!init_reshow) {
             //Clear buttons
@@ -712,20 +823,23 @@ int add_person(Person *p)
         {
             key = MXC_TS_GetKey();
             if (key == 2) {
-                face_ok = 1;
+                finger_ok = 1;
                 init_reshow = 0;
                 PR_DEBUG("Face is ok\n");
             } else if (key == 1) {
-                face_ok = 0;
+                finger_ok = 0;
                 init_reshow = 0;
                 PR_DEBUG("Face is not ok\n");
             }
         }
     }
-    face_ok = 0;
+
+    //face_ok = 0;
+    finger_ok = 0;
     capture_key = 0;
     MXC_ICC_Disable(MXC_ICC0); //Disable ICC for flash write
-    face_id();
+    //face_id();
+    finger_id();
 
     PR_DEBUG("This is record\n");
 

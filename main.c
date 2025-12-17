@@ -26,6 +26,8 @@
  *
  */
 
+// jason add fingerprint
+
 #define S_MODULE_NAME "main"
 
 /***** Includes *****/
@@ -43,6 +45,8 @@
 #include "cnn_1.h"
 #include "cnn_2.h"
 #include "cnn_3.h"
+#include "cnn_4.h"
+#include "cnn_5.h"
 #include "MAXCAM_Debug.h"
 #include "facedetection.h"
 #include "post_process.h"
@@ -273,14 +277,27 @@ int main(void)
     cnn_1_load_bias(); // Load bias data of CNN_1
     cnn_1_configure(); // Configure CNN_1 layers
 
-    cnn_2_load_weights(); // Load kernels of CNN_2
-    cnn_2_load_bias(); // Load bias data of CNN_2
-    cnn_2_configure(); // Configure CNN_2 layers
+    // cnn_2_load_weights(); // Load kernels of CNN_2
+    // cnn_2_load_bias(); // Load bias data of CNN_2
+    // cnn_2_configure(); // Configure CNN_2 layers
 
-    cnn_3_load_weights(); // Load kernels of CNN_3
-    //reload_cnn(); // Reload CNN_3 weights with new data from flash
-    cnn_3_load_bias(); // Load bias data of CNN_3
-    cnn_3_configure(); // Configure CNN_3 layers
+    // cnn_3_load_weights(); // Load kernels of CNN_3
+    // //reload_cnn(); // Reload CNN_3 weights with new data from flash
+    // cnn_3_load_bias(); // Load bias data of CNN_3
+    // cnn_3_configure(); // Configure CNN_3 layers
+
+    // jason add fingerprint
+    // cnn for finger recognition
+
+    //  fingerprint recognition 
+    cnn_4_load_weights();
+    cnn_4_load_bias();
+    cnn_4_configure();
+
+    // dot product in fingerprint
+    cnn_5_load_weights();
+    cnn_5_load_bias();
+    cnn_5_configure();
 
     //Initialize default names
     init_names();
@@ -299,6 +316,9 @@ int main(void)
 
     // Initialize the camera driver.
     camera_init(CAMERA_FREQ);
+
+    // Initialize the fingerprint sensor
+    as608_uart_init();
 
     // Obtain the I2C slave address of the camera.
     slaveAddress = camera_get_slave_address();

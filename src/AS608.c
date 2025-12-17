@@ -12,12 +12,15 @@
 
 uint8_t TxData[16];
 uint8_t RxData[144*267+12];
-uint8_t Finger[144][256];
+uint8_t Finger[112*112];
+
 
 mxc_uart_req_t read_req;
 mxc_uart_req_t write_req;
 
 volatile int READ_FLAG;
+
+volatile uint8_t face_detected;
 
 
 void UART1_Handler(void)
@@ -127,6 +130,98 @@ void read_from_as608(uint32_t len)
 {
     RxData[9] = 0xFF;
     uart_read(RxData, len);
+}
+
+
+void finger_detection(void)
+{
+    read_from_as608(CMD_LEN);
+    write_to_as608(AS608_SCAN_REQ);
+    wait_receiving();
+    if(RxData[9]==AS608_DETECTED_FINGER){
+        face_detected = 1;
+    }
+}
+
+void finger_recv_data(void){
+    read_from_as608(sizeof(RxData));
+    write_to_as608(AS608_SAVE_REQ);
+    wait_receiving();
+    finger_resize(RxData,Finger);
+}
+
+
+static inline uint8_t rx_get_gray8(const uint8_t *rxData, int sx, int sy)
+{
+
+    int rowPair   = sy >> 1;         // sy / 2
+    int nibbleSel = sy & 1;          // sy % 2
+
+    const uint8_t b = rxData[RX_HDR_BYTES + rowPair * RX_ROW_STRIDE + sx];
+
+    uint8_t val4 = (nibbleSel == 0) ? (b >> 4) : (b & 0x0F); 
+    return (uint8_t)(val4 * 17); // 4-bit (0..15) → 8-bit (0..255) 17
+}
+
+
+#if USE_BILINEAR
+static inline uint8_t sample_bilinear(const uint8_t *rxData, float sxf, float syf)
+{
+
+    int sx0 = (int)floorf(sxf);
+    int sy0 = (int)floorf(syf);
+    int sx1 = (sx0 + 1 < SRC_W) ? sx0 + 1 : SRC_W - 1;
+    int sy1 = (sy0 + 1 < SRC_H) ? sy0 + 1 : SRC_H - 1;
+
+    float wx = sxf - sx0;
+    float wy = syf - sy0;
+
+    uint8_t p00 = rx_get_gray8(rxData, sx0, sy0);
+    uint8_t p10 = rx_get_gray8(rxData, sx1, sy0);
+    uint8_t p01 = rx_get_gray8(rxData, sx0, sy1);
+    uint8_t p11 = rx_get_gray8(rxData, sx1, sy1);
+
+    float top    = p00 + wx * (p10 - p00);
+    float bottom = p01 + wx * (p11 - p01);
+    float v      = top + wy * (bottom - top);
+
+
+    int vi = (int)(v + 0.5f);
+    if (vi < 0) vi = 0; else if (vi > 255) vi = 255;
+    return (uint8_t)vi;
+}
+#else
+static inline uint8_t sample_nearest(const uint8_t *rxData, float sxf, float syf)
+{
+    int sx = (int)floorf(sxf + 0.5f);
+    int sy = (int)floorf(syf + 0.5f);
+    if (sx < 0) sx = 0; else if (sx >= SRC_W) sx = SRC_W - 1;
+    if (sy < 0) sy = 0; else if (sy >= SRC_H) sy = SRC_H - 1;
+    return rx_get_gray8(rxData, sx, sy);
+}
+#endif
+
+
+void finger_resize(const uint8_t *rxData, uint8_t *dst112x112)
+{
+
+    const float scaleX = (float)SRC_W / (float)DST_W;
+    const float scaleY = (float)SRC_H / (float)DST_H;
+
+    for (int y = 0; y < DST_H; ++y) {
+        // center-aligned mapping
+        float syf = ( (y + 0.5f) * scaleY ) - 0.5f;
+
+        for (int x = 0; x < DST_W; ++x) {
+            float sxf = ( (x + 0.5f) * scaleX ) - 0.5f;
+
+            #if USE_BILINEAR
+                dst112x112[y * DST_W + x] = sample_bilinear(rxData, sxf, syf);
+            #else
+                dst112x112[y * DST_W + x] = sample_nearest (rxData, sxf, syf);
+            #endif
+        }
+    }
 }
 
 

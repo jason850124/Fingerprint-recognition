@@ -26,6 +26,22 @@
 #define SHOW_START_X (TFT_WIDTH - HEIGHT_ID) / 2
 #define SHOW_START_Y (TFT_HEIGHT - WIDTH_ID) / 2
 
+
+
+#define RX_HDR_BYTES      12        // instruction data
+#define RX_ROW_STRIDE     267       // row data len
+#define SRC_W             256       // image row data len
+#define SRC_H             288       // image colum data len
+#define SRC_ROWS_PACKED   144       // recv image colum data(1 byte for 2 pixel)
+
+#define DST_W             112       // resize width
+#define DST_H             112       // resize height
+
+#define SHOW_START_X      0
+#define SHOW_START_Y      0
+
+#define USE_BILINEAR      1
+
 int record(void);
 void show_keyboard(void);
 void init_cnn_from_flash(void);
